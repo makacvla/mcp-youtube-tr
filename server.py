@@ -122,19 +122,6 @@ def get_transcript(
 
 
 if __name__ == "__main__":
-    from starlette.applications import Starlette
-    from starlette.routing import Mount
-    from mcp.server.sse import sse_server
-    import uvicorn
-    
-    # Create SSE server routes
-    sse_app = sse_server(mcp._mcp_server)
-    
-    app = Starlette(
-        debug=True,
-        routes=[
-            Mount("/", app=sse_app),
-        ],
-    )
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    os.environ["MCP_TRANSPORT"] = "sse"
+    mcp.run(port=8000, host="0.0.0.0")
