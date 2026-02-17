@@ -6,12 +6,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
 
-mcp = FastMCP(
-    "YouTube Transcript",
-    description="MCP server for fetching YouTube video transcripts",
-    stateless_http=True,
-    json_response=True,
-)
+mcp = FastMCP("YouTube Transcript")
 
 def extract_video_id(video_input: str) -> str:
     """Extract video ID from various YouTube URL formats or plain ID."""
