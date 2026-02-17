@@ -119,3 +119,31 @@ def get_transcript(
     }
 
     return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+if __name__ == "__main__":
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    from sse_starlette import EventSourceResponse
+    import uvicorn
+    
+    async def handle_sse(request):
+        async with SseServerTransport("/message") as (read_stream, write_stream):
+            await mcp._mcp_server.run(
+                read_stream,
+                write_stream,
+                mcp._mcp_server.create_initialization_options()
+            )
+    
+    async def handle_messages(request):
+        return EventSourceResponse(mcp._mcp_server.handle_request(request))
+    
+    app = Starlette(
+        debug=True,
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+        ],
+    )
+    
+    uvicorn.run(app, host="0.0.0.0", port=8000)
