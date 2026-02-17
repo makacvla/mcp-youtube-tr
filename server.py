@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 from mcp.server.fastmcp import FastMCP
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -6,30 +7,34 @@ from youtube_transcript_api import YouTubeTranscriptApi
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
 
-mcp = FastMCP("YouTube Transcript")
+mcp = FastMCP(
+    "YouTube Transcript",
+    host="0.0.0.0",
+    port=8000,
+    stateless_http=True,
+    json_response=True,
+)
+
+YOUTUBE_PATTERNS = [
+    r"(?:youtube\.com/shorts/)([a-zA-Z0-9_-]{11})",
+    r"(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})",
+    r"(?:youtu\.be/)([a-zA-Z0-9_-]{11})",
+    r"(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})",
+]
+
 
 def extract_video_id(video_input: str) -> str:
     """Extract video ID from various YouTube URL formats or plain ID."""
     video_input = video_input.strip()
 
-    # Already a plain ID (11 chars, no slashes)
     if len(video_input) == 11 and "/" not in video_input and "." not in video_input:
         return video_input
 
-    # Handle various URL formats
-    import re
-    patterns = [
-        r"(?:youtube\.com/shorts/)([a-zA-Z0-9_-]{11})",
-        r"(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})",
-        r"(?:youtu\.be/)([a-zA-Z0-9_-]{11})",
-        r"(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})",
-    ]
-    for pattern in patterns:
+    for pattern in YOUTUBE_PATTERNS:
         match = re.search(pattern, video_input)
         if match:
             return match.group(1)
 
-    # Fallback: return as-is (might be an ID of different length)
     return video_input
 
 
@@ -52,11 +57,13 @@ def get_transcript(
         Also includes metadata: language, whether auto-generated, video ID.
     """
     video_id = extract_video_id(video)
-    lang_list = [l.strip() for l in languages.split(",") if l.strip()]
+    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
 
+    api = YouTubeTranscriptApi()
+
+    # List available transcripts
     try:
-        # List available transcripts
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript_list = api.list(video_id)
         available_info = []
         for t in transcript_list:
             available_info.append({
@@ -70,26 +77,25 @@ def get_transcript(
             "video_id": video_id,
         }, ensure_ascii=False, indent=2)
 
-    # Try to fetch in preferred language order
+    # Try preferred languages first
     transcript = None
     used_lang = None
     errors = []
 
     for lang in lang_list:
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
+            transcript = api.fetch(video_id, languages=[lang])
             used_lang = lang
             break
         except Exception as e:
-            errors.append(f"{lang}: {str(e)}")
+            errors.append(f"{lang}: {e}")
 
-    # Fallback: try to get any available transcript
+    # Fallback: first available transcript
     if transcript is None:
         try:
-            # Try to find first available transcript
-            first_transcript = next(iter(transcript_list))
-            transcript = first_transcript.fetch()
-            used_lang = first_transcript.language_code
+            first = next(iter(transcript_list))
+            transcript = first.fetch()
+            used_lang = first.language_code
         except Exception as e:
             return json.dumps({
                 "error": f"Could not fetch any transcript: {e}",
@@ -103,27 +109,19 @@ def get_transcript(
     lines = []
     for entry in transcript:
         if timestamps:
-            minutes = int(entry['start'] // 60)
-            seconds = int(entry['start'] % 60)
-            lines.append(f"[{minutes:02d}:{seconds:02d}] {entry['text']}")
+            minutes = int(entry.start // 60)
+            seconds = int(entry.start % 60)
+            lines.append(f"[{minutes:02d}:{seconds:02d}] {entry.text}")
         else:
-            lines.append(entry['text'])
+            lines.append(entry.text)
 
-    text = "\n".join(lines)
-
-    result = {
+    return json.dumps({
         "video_id": video_id,
         "language": used_lang,
         "available_transcripts": available_info,
-        "transcript": text,
-    }
-
-    return json.dumps(result, ensure_ascii=False, indent=2)
+        "transcript": "\n".join(lines),
+    }, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
-    import os
-    os.environ["MCP_TRANSPORT"] = "sse"
-    os.environ["MCP_PORT"] = "8000"
-    os.environ["MCP_HOST"] = "0.0.0.0"
-    mcp.run()
+    mcp.run(transport="streamable-http")
