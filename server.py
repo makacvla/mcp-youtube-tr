@@ -1,5 +1,6 @@
 import json
 import logging
+import uvicorn
 from mcp.server.fastmcp import FastMCP
 from youtube_transcript_api import YouTubeTranscriptApi
 
@@ -122,4 +123,4 @@ def get_transcript(
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    uvicorn.run(mcp.get_asgi_app(), host="0.0.0.0", port=8000)
