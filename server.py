@@ -124,4 +124,6 @@ def get_transcript(
 if __name__ == "__main__":
     import os
     os.environ["MCP_TRANSPORT"] = "sse"
-    mcp.run(port=8000, host="0.0.0.0")
+    os.environ["MCP_PORT"] = "8000"
+    os.environ["MCP_HOST"] = "0.0.0.0"
+    mcp.run()
