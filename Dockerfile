@@ -13,4 +13,4 @@ COPY server.py .
 
 EXPOSE 8000
 
-CMD ["python", "server.py"]
+CMD ["fastmcp", "dev", "server.py", "--transport", "sse", "--port", "8000", "--host", "0.0.0.0"]

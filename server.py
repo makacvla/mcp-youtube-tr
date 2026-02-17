@@ -1,16 +1,10 @@
 import json
 import logging
-import os
 from mcp.server.fastmcp import FastMCP
 from youtube_transcript_api import YouTubeTranscriptApi
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
-
-# Set environment variables for FastMCP HTTP transport
-os.environ["MCP_TRANSPORT"] = "sse"
-os.environ["MCP_HOST"] = "0.0.0.0"
-os.environ["MCP_PORT"] = "8000"
 
 mcp = FastMCP("YouTube Transcript")
 
@@ -125,7 +119,3 @@ def get_transcript(
     }
 
     return json.dumps(result, ensure_ascii=False, indent=2)
-
-
-if __name__ == "__main__":
-    mcp.run()
