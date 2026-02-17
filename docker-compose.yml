@@ -1,0 +1,7 @@
+services:
+  youtube-mcp:
+    build: .
+    container_name: youtube-mcp-server
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
