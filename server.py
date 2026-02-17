@@ -59,17 +59,21 @@ def get_transcript(
     video_id = extract_video_id(video)
     lang_list = [l.strip() for l in languages.split(",") if l.strip()]
 
-    api = YouTubeTranscriptApi()
-
-    # List available transcripts
-    available = api.list(video_id)
-    available_info = []
-    for t in available:
-        available_info.append({
-            "language": t.language,
-            "language_code": t.language_code,
-            "is_generated": t.is_generated,
-        })
+    try:
+        # List available transcripts
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        available_info = []
+        for t in transcript_list:
+            available_info.append({
+                "language": t.language,
+                "language_code": t.language_code,
+                "is_generated": t.is_generated,
+            })
+    except Exception as e:
+        return json.dumps({
+            "error": f"Could not list transcripts: {e}",
+            "video_id": video_id,
+        }, ensure_ascii=False, indent=2)
 
     # Try to fetch in preferred language order
     transcript = None
@@ -78,21 +82,24 @@ def get_transcript(
 
     for lang in lang_list:
         try:
-            transcript = api.fetch(video_id, languages=[lang])
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
             used_lang = lang
             break
         except Exception as e:
-            errors.append(f"{lang}: {e}")
+            errors.append(f"{lang}: {str(e)}")
 
-    # Fallback: fetch default transcript
+    # Fallback: try to get any available transcript
     if transcript is None:
         try:
-            transcript = api.fetch(video_id)
-            used_lang = "default"
+            # Try to find first available transcript
+            first_transcript = next(iter(transcript_list))
+            transcript = first_transcript.fetch()
+            used_lang = first_transcript.language_code
         except Exception as e:
             return json.dumps({
-                "error": f"Could not fetch transcript: {e}",
+                "error": f"Could not fetch any transcript: {e}",
                 "tried_languages": lang_list,
+                "errors": errors,
                 "available_transcripts": available_info,
                 "video_id": video_id,
             }, ensure_ascii=False, indent=2)
@@ -101,11 +108,11 @@ def get_transcript(
     lines = []
     for entry in transcript:
         if timestamps:
-            minutes = int(entry.start // 60)
-            seconds = int(entry.start % 60)
-            lines.append(f"[{minutes:02d}:{seconds:02d}] {entry.text}")
+            minutes = int(entry['start'] // 60)
+            seconds = int(entry['start'] % 60)
+            lines.append(f"[{minutes:02d}:{seconds:02d}] {entry['text']}")
         else:
-            lines.append(entry.text)
+            lines.append(entry['text'])
 
     text = "\n".join(lines)
 
