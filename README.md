@@ -17,8 +17,8 @@ Server will be available at `http://<host>:8000/mcp`
 The Dockerfile includes proxy settings for network environments that require them:
 
 ```dockerfile
-ENV http_proxy=http://cache.konts.lv:8080
-ENV https_proxy=http://cache.konts.lv:8080
+ENV http_proxy=http://proxy.server.com:8080
+ENV https_proxy=http://proxy.server.com:8080
 ENV no_proxy=localhost,127.0.0.1
 ```
 

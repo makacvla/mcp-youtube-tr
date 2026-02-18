@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 ENV http_proxy=http://proxy.server.com:8080
-ENV https_proxy=http://proxy.server:8080
+ENV https_proxy=http://proxy.server.com:8080
 ENV no_proxy=localhost,127.0.0.1
 
 WORKDIR /app
