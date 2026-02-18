@@ -5,3 +5,4 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    stop_grace_period: 10s

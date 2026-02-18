@@ -130,6 +130,18 @@ def get_transcript(
 
 
 if __name__ == "__main__":
+    import signal
+    import sys
+    
+    def signal_handler(sig, frame):
+        logger.info(f"Received signal {sig}, shutting down gracefully...")
+        sys.exit(0)
+    
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    logger.info("Starting YouTube Transcript MCP Server...")
     mcp.run(                                         # fix #2 — host/port/json_response go here
         transport="http",                            # fix #5 — canonical name in fastmcp v2+
         host="0.0.0.0",
