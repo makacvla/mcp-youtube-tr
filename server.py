@@ -34,6 +34,26 @@ def list_available_transcripts(video: str) -> str:
     return t_transcript.list_available_transcripts(video)
 
 
+@mcp.tool()
+def get_transcript_chunk(
+    video: str,
+    from_sec: int,
+    to_sec: int,
+    languages: str = "en,ru",
+    timestamps: bool = True,
+) -> str:
+    """Fetch transcript segment between [from_sec, to_sec).
+
+    Args:
+        video: YouTube video ID or full URL
+        from_sec: Start time in seconds (inclusive)
+        to_sec: End time in seconds (exclusive)
+        languages: Comma-separated language codes (default: "en,ru")
+        timestamps: Include [MM:SS] timestamps (default: true)
+    """
+    return t_transcript.get_transcript_chunk(video, from_sec, to_sec, languages, timestamps)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)

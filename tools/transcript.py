@@ -114,3 +114,61 @@ def list_available_transcripts(video: str) -> str:
             for t in transcripts
         ],
     })
+
+
+def _fetch_first_available(video_id, lang_list):
+    """Return (entries, used_lang) on success, or (None, None, errors) on failure.
+
+    Uses the cached _fetch_lang so repeated calls for the same (video_id, lang)
+    share the 6h TTL with get_transcript and friends.
+    """
+    errors = []
+    for lang in lang_list:
+        try:
+            return _fetch_lang(video_id, lang), lang, None
+        except Exception as e:
+            errors.append(f"{lang}: {e}")
+    return None, None, errors
+
+
+def get_transcript_chunk(
+    video: str,
+    from_sec: int,
+    to_sec: int,
+    languages: str = "en,ru",
+    timestamps: bool = True,
+) -> str:
+    if not video or not video.strip():
+        raise ValueError("video must be a non-empty string")
+    if from_sec < 0:
+        raise ValueError("from_sec must be >= 0")
+    if to_sec <= from_sec:
+        raise ValueError("to_sec must be greater than from_sec")
+
+    video_id = extract_video_id(video)
+    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
+    if not lang_list:
+        raise ValueError("languages must contain at least one code")
+
+    entries, used_lang, errors = _fetch_first_available(video_id, lang_list)
+    if entries is None:
+        return _dumps({
+            "ok": False,
+            "error": "Could not fetch transcript in any requested language",
+            "video_id": video_id,
+            "tried_languages": lang_list,
+            "errors": errors,
+        })
+
+    in_range = [
+        e for e in entries
+        if from_sec <= _get_entry_field(e, "start") < to_sec
+    ]
+    return _dumps({
+        "ok": True,
+        "video_id": video_id,
+        "language": used_lang,
+        "from_sec": from_sec,
+        "to_sec": to_sec,
+        "transcript": _format_entries(in_range, timestamps),
+    })
