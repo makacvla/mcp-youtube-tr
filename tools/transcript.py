@@ -172,3 +172,57 @@ def get_transcript_chunk(
         "to_sec": to_sec,
         "transcript": _format_entries(in_range, timestamps),
     })
+
+
+def search_in_transcript(
+    video: str,
+    query: str,
+    languages: str = "en,ru",
+    context_chars: int = 50,
+) -> str:
+    if not video or not video.strip():
+        raise ValueError("video must be a non-empty string")
+    if not query or not query.strip():
+        raise ValueError("query must be a non-empty string")
+    if context_chars < 0:
+        raise ValueError("context_chars must be >= 0")
+
+    video_id = extract_video_id(video)
+    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
+    if not lang_list:
+        raise ValueError("languages must contain at least one code")
+
+    entries, used_lang, errors = _fetch_first_available(video_id, lang_list)
+    if entries is None:
+        return _dumps({
+            "ok": False,
+            "error": "Could not fetch transcript in any requested language",
+            "video_id": video_id,
+            "tried_languages": lang_list,
+            "errors": errors,
+        })
+
+    q_lower = query.lower()
+    matches = []
+    for entry in entries:
+        text = _get_entry_field(entry, "text")
+        idx = text.lower().find(q_lower)
+        if idx == -1:
+            continue
+        start = _get_entry_field(entry, "start")
+        ctx_start = max(0, idx - context_chars)
+        ctx_end = min(len(text), idx + len(query) + context_chars)
+        matches.append({
+            "timestamp_sec": start,
+            "formatted_timestamp": f"{int(start // 60):02d}:{int(start % 60):02d}",
+            "text": text,
+            "context": text[ctx_start:ctx_end],
+        })
+
+    return _dumps({
+        "ok": True,
+        "video_id": video_id,
+        "query": query,
+        "language": used_lang,
+        "matches": matches,
+    })

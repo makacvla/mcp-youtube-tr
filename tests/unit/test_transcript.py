@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from tools.transcript import get_transcript, list_available_transcripts, get_transcript_chunk
+from tools.transcript import get_transcript, list_available_transcripts, get_transcript_chunk, search_in_transcript
 
 
 class _Entry:
@@ -111,3 +111,39 @@ def test_get_transcript_chunk_raises_on_invalid_range():
 def test_get_transcript_chunk_raises_on_negative():
     with pytest.raises(ValueError):
         get_transcript_chunk("dQw4w9WgXcQ", -1, 10)
+
+
+def test_search_in_transcript_finds_matches_case_insensitive():
+    track = MagicMock(language="English", language_code="en", is_generated=False)
+    entries = [
+        _Entry("Hello world", 5.0),
+        _Entry("nothing here", 10.0),
+        _Entry("say hello again", 15.0),
+    ]
+    api = _mock_api([track], {"en": entries})
+
+    with patch("tools.transcript.YouTubeTranscriptApi", return_value=api):
+        out = json.loads(search_in_transcript("dQw4w9WgXcQ", "hello", languages="en"))
+
+    assert out["ok"] is True
+    assert out["query"] == "hello"
+    assert len(out["matches"]) == 2
+    assert out["matches"][0]["formatted_timestamp"] == "00:05"
+    assert out["matches"][1]["formatted_timestamp"] == "00:15"
+    assert "Hello world" in out["matches"][0]["text"]
+
+
+def test_search_in_transcript_no_matches_returns_empty_list():
+    track = MagicMock(language="English", language_code="en", is_generated=False)
+    api = _mock_api([track], {"en": [_Entry("nothing", 0.0)]})
+
+    with patch("tools.transcript.YouTubeTranscriptApi", return_value=api):
+        out = json.loads(search_in_transcript("dQw4w9WgXcQ", "missing", languages="en"))
+
+    assert out["ok"] is True
+    assert out["matches"] == []
+
+
+def test_search_in_transcript_raises_on_empty_query():
+    with pytest.raises(ValueError):
+        search_in_transcript("dQw4w9WgXcQ", "")

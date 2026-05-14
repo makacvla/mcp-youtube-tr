@@ -54,6 +54,24 @@ def get_transcript_chunk(
     return t_transcript.get_transcript_chunk(video, from_sec, to_sec, languages, timestamps)
 
 
+@mcp.tool()
+def search_in_transcript(
+    video: str,
+    query: str,
+    languages: str = "en,ru",
+    context_chars: int = 50,
+) -> str:
+    """Search for a substring within a video's transcript; returns timestamped matches.
+
+    Args:
+        video: YouTube video ID or full URL
+        query: Text to search for (case-insensitive)
+        languages: Comma-separated language codes (default: "en,ru")
+        context_chars: Characters of context to include around each match (default: 50)
+    """
+    return t_transcript.search_in_transcript(video, query, languages, context_chars)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)
