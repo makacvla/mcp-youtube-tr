@@ -1,150 +1,160 @@
-import json
-import re
 import logging
-from fastmcp import FastMCP                         # fix #1
-from youtube_transcript_api import YouTubeTranscriptApi
+import signal
+import sys
+
+from fastmcp import FastMCP
+
+from tools import transcript as t_transcript
+from tools import video as t_video
+from tools import discovery as t_discovery
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
 
-mcp = FastMCP(                                       # fix #2 — no host/port/json_response here
-    "YouTube Transcript",
-    stateless_http=True,
-)
-
-YOUTUBE_PATTERNS = [
-    r"(?:youtube\.com/shorts/)([a-zA-Z0-9_-]{11})",
-    r"(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})",
-    r"(?:youtu\.be/)([a-zA-Z0-9_-]{11})",
-    r"(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})",
-]
-
-
-def extract_video_id(video_input: str) -> str:
-    """Extract video ID from various YouTube URL formats or plain ID."""
-    video_input = video_input.strip()
-    if len(video_input) == 11 and "/" not in video_input and "." not in video_input:
-        return video_input
-    for pattern in YOUTUBE_PATTERNS:
-        match = re.search(pattern, video_input)
-        if match:
-            return match.group(1)
-    return video_input
-
-
-def _get_entry_field(entry, field: str):
-    """Compatibility helper for dict-style (< 0.6) and object-style (>= 0.6) entries."""
-    if isinstance(entry, dict):
-        return entry[field]
-    return getattr(entry, field)                     # fix #4
+mcp = FastMCP("YouTube Transcript")
 
 
 @mcp.tool()
-def get_transcript(
-    video: str,
-    languages: str = "en,ru",
-    timestamps: bool = True,
-) -> str:
-    """Fetch transcript (subtitles) for a YouTube video without watching it.
+def get_transcript(video: str, languages: str = "en,ru", timestamps: bool = True) -> str:
+    """Fetch transcript (subtitles) for a YouTube video.
 
     Args:
         video: YouTube video ID or full URL
-            (e.g. "dQw4w9WgXcQ" or "https://youtube.com/shorts/dQw4w9WgXcQ")
         languages: Comma-separated language codes in priority order (default: "en,ru")
-        timestamps: Include timestamps in output (default: true)
-
-    Returns:
-        Full transcript text with optional timestamps.
-        Also includes metadata: language, whether auto-generated, video ID.
+        timestamps: Include [MM:SS] timestamps in output (default: true)
     """
-    video_id = extract_video_id(video)
-    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
+    return t_transcript.get_transcript(video, languages, timestamps)
 
-    api = YouTubeTranscriptApi()
 
-    try:
-        transcript_list = list(api.list(video_id))   # fix #3 — materialize so it can be reused
-        available_info = [
-            {
-                "language": t.language,
-                "language_code": t.language_code,
-                "is_generated": t.is_generated,
-            }
-            for t in transcript_list
-        ]
-    except Exception as e:
-        return json.dumps(
-            {"error": f"Could not list transcripts: {e}", "video_id": video_id},
-            ensure_ascii=False, indent=2,
-        )
+@mcp.tool()
+def list_available_transcripts(video: str) -> str:
+    """List all available transcript tracks for a YouTube video without fetching content.
 
-    transcript = None
-    used_lang = None
-    errors = []
+    Args:
+        video: YouTube video ID or full URL
+    """
+    return t_transcript.list_available_transcripts(video)
 
-    for lang in lang_list:
-        try:
-            transcript = api.fetch(video_id, languages=[lang])
-            used_lang = lang
-            break
-        except Exception as e:
-            errors.append(f"{lang}: {e}")
 
-    if transcript is None:
-        try:
-            first = transcript_list[0]               # fix #3 — safe index on list
-            transcript = first.fetch()
-            used_lang = first.language_code
-        except Exception as e:
-            return json.dumps(
-                {
-                    "error": f"Could not fetch any transcript: {e}",
-                    "tried_languages": lang_list,
-                    "errors": errors,
-                    "available_transcripts": available_info,
-                    "video_id": video_id,
-                },
-                ensure_ascii=False, indent=2,
-            )
+@mcp.tool()
+def get_transcript_chunk(
+    video: str,
+    from_sec: int,
+    to_sec: int,
+    languages: str = "en,ru",
+    timestamps: bool = True,
+) -> str:
+    """Fetch transcript segment between [from_sec, to_sec).
 
-    lines = []
-    for entry in transcript:
-        text = _get_entry_field(entry, "text")
-        if timestamps:
-            start = _get_entry_field(entry, "start")
-            minutes = int(start // 60)
-            seconds = int(start % 60)
-            lines.append(f"[{minutes:02d}:{seconds:02d}] {text}")
-        else:
-            lines.append(text)
+    Args:
+        video: YouTube video ID or full URL
+        from_sec: Start time in seconds (inclusive)
+        to_sec: End time in seconds (exclusive)
+        languages: Comma-separated language codes (default: "en,ru")
+        timestamps: Include [MM:SS] timestamps (default: true)
+    """
+    return t_transcript.get_transcript_chunk(video, from_sec, to_sec, languages, timestamps)
 
-    return json.dumps(
-        {
-            "video_id": video_id,
-            "language": used_lang,
-            "available_transcripts": available_info,
-            "transcript": "\n".join(lines),
-        },
-        ensure_ascii=False, indent=2,
-    )
+
+@mcp.tool()
+def search_in_transcript(
+    video: str,
+    query: str,
+    languages: str = "en,ru",
+    context_chars: int = 50,
+) -> str:
+    """Search for a substring within a video's transcript; returns timestamped matches.
+
+    Args:
+        video: YouTube video ID or full URL
+        query: Text to search for (case-insensitive)
+        languages: Comma-separated language codes (default: "en,ru")
+        context_chars: Characters of context to include around each match (default: 50)
+    """
+    return t_transcript.search_in_transcript(video, query, languages, context_chars)
+
+
+@mcp.tool()
+def get_video_info(video: str) -> str:
+    """Fetch metadata about a YouTube video without watching it.
+
+    Args:
+        video: YouTube video ID or full URL
+    """
+    return t_video.get_video_info(video)
+
+
+@mcp.tool()
+def get_video_chapters(video: str) -> str:
+    """Fetch chapter markers (title + start/end seconds) for a YouTube video.
+
+    Args:
+        video: YouTube video ID or full URL
+    """
+    return t_video.get_video_chapters(video)
+
+
+@mcp.tool()
+def get_thumbnail_url(video: str, quality: str = "max") -> str:
+    """Get a thumbnail URL for a YouTube video at the requested quality.
+
+    Args:
+        video: YouTube video ID or full URL
+        quality: One of "max", "high", "medium", "default" (default: "max")
+    """
+    return t_video.get_thumbnail_url(video, quality)
+
+
+@mcp.tool()
+def search_videos(query: str, max_results: int = 10) -> str:
+    """Search YouTube and return the top N videos with metadata.
+
+    Args:
+        query: Search query string
+        max_results: Number of results, 1 to 50 (default: 10)
+    """
+    return t_discovery.search_videos(query, max_results)
+
+
+@mcp.tool()
+def get_channel_info(channel: str) -> str:
+    """Fetch metadata for a YouTube channel (handle, URL, or UC… ID).
+
+    Args:
+        channel: @handle, full channel URL, or UC… channel ID
+    """
+    return t_discovery.get_channel_info(channel)
+
+
+@mcp.tool()
+def list_channel_videos(channel: str, max_results: int = 20) -> str:
+    """List recent videos from a YouTube channel.
+
+    Args:
+        channel: @handle, full channel URL, or UC… channel ID
+        max_results: Number of videos to return, 1 to 100 (default: 20)
+    """
+    return t_discovery.list_channel_videos(channel, max_results)
+
+
+@mcp.tool()
+def get_playlist_videos(playlist: str, max_results: int = 50) -> str:
+    """List videos in a YouTube playlist.
+
+    Args:
+        playlist: Playlist ID (PL…) or full playlist URL
+        max_results: Number of videos to return, 1 to 200 (default: 50)
+    """
+    return t_discovery.get_playlist_videos(playlist, max_results)
+
+
+def _signal_handler(sig, frame):
+    logger.info(f"Received signal {sig}, shutting down gracefully...")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
-    import signal
-    import sys
-    
-    def signal_handler(sig, frame):
-        logger.info(f"Received signal {sig}, shutting down gracefully...")
-        sys.exit(0)
-    
-    # Register signal handlers for graceful shutdown
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-    
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
     logger.info("Starting YouTube Transcript MCP Server...")
-    mcp.run(                                         # fix #2 — host/port/json_response go here
-        transport="http",                            # fix #5 — canonical name in fastmcp v2+
-        host="0.0.0.0",
-        port=8000,
-        json_response=True,
-    )
+    mcp.run(transport="http", host="0.0.0.0", port=8000, json_response=True, stateless_http=True)
