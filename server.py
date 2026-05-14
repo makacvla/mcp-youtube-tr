@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 
 from tools import transcript as t_transcript
 from tools import video as t_video
+from tools import discovery as t_discovery
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
@@ -102,6 +103,17 @@ def get_thumbnail_url(video: str, quality: str = "max") -> str:
         quality: One of "max", "high", "medium", "default" (default: "max")
     """
     return t_video.get_thumbnail_url(video, quality)
+
+
+@mcp.tool()
+def search_videos(query: str, max_results: int = 10) -> str:
+    """Search YouTube and return the top N videos with metadata.
+
+    Args:
+        query: Search query string
+        max_results: Number of results, 1 to 50 (default: 10)
+    """
+    return t_discovery.search_videos(query, max_results)
 
 
 def _signal_handler(sig, frame):
