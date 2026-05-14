@@ -43,27 +43,42 @@ Add to `mcp.json` (VS Code global settings):
 }
 ```
 
-## Tool: `get_transcript`
+## Tools
 
-| Parameter    | Type   | Default     | Description                                   |
-|-------------|--------|-------------|-----------------------------------------------|
-| `video`     | string | —           | Video ID or full URL                           |
-| `languages` | string | `"en,ru"`   | Language priority, comma-separated             |
-| `timestamps`| bool   | `true`      | Include timestamps                             |
+All tools return JSON with an `ok: bool` field. Programmatic input errors (empty video, invalid range) raise; runtime errors (video not found, network) return `{"ok": false, "error": "..."}`.
 
-### Usage Examples
+### Transcript
 
-```
-Get transcript for video https://youtube.com/shorts/6MIdV-qFjIc
+| Tool | Params | Notes |
+|------|--------|-------|
+| `get_transcript` | `video`, `languages="en,ru"`, `timestamps=true` | Full transcript with optional `[MM:SS]` |
+| `list_available_transcripts` | `video` | Available languages + auto/manual flag |
+| `get_transcript_chunk` | `video`, `from_sec`, `to_sec`, `languages="en,ru"`, `timestamps=true` | Time-range slice |
+| `search_in_transcript` | `video`, `query`, `languages="en,ru"`, `context_chars=50` | Case-insensitive search with timestamps |
 
-Show subtitles for dQw4w9WgXcQ in Russian
-```
+### Video metadata
+
+| Tool | Params | Notes |
+|------|--------|-------|
+| `get_video_info` | `video` | Title, channel, duration, views, description, tags |
+| `get_video_chapters` | `video` | Chapter titles + start/end seconds (may be empty) |
+| `get_thumbnail_url` | `video`, `quality="max"` | One of `max`, `high`, `medium`, `default` |
+
+### Discovery
+
+| Tool | Params | Notes |
+|------|--------|-------|
+| `search_videos` | `query`, `max_results=10` (cap 50) | YouTube search |
+| `get_channel_info` | `channel` | `@handle`, full URL, or UC… ID |
+| `list_channel_videos` | `channel`, `max_results=20` (cap 100) | Recent uploads |
+| `get_playlist_videos` | `playlist`, `max_results=50` (cap 200) | Playlist ID or full URL |
+
+`video` accepts ID or any URL: `watch?v=…`, `youtu.be/…`, `shorts/…`, `embed/…`.
 
 ## Testing
 
 ```bash
-curl -X POST http://localhost:8000/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
-  -d '{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"capabilities":{},"protocolVersion":"0.1.0","clientInfo":{"name":"test","version":"1.0"}}}'
+pip install -r requirements-dev.txt
+pytest                       # unit only (fast)
+pytest --run-integration     # also hit real YouTube
 ```
