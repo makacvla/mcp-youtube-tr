@@ -9,7 +9,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server.py .
+COPY server.py ytdlp_client.py ./
+COPY tools/ ./tools/
 
 EXPOSE 8000
 
