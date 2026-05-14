@@ -49,7 +49,7 @@ def get_transcript(video: str, languages: str = "en,ru", timestamps: bool = True
         raise ValueError("video must be a non-empty string")
 
     video_id = extract_video_id(video)
-    lang_list = [l.strip() for l in languages.split(",") if l.strip()]
+    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
     if not lang_list:
         raise ValueError("languages must contain at least one code")
 
