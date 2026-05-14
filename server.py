@@ -137,6 +137,17 @@ def list_channel_videos(channel: str, max_results: int = 20) -> str:
     return t_discovery.list_channel_videos(channel, max_results)
 
 
+@mcp.tool()
+def get_playlist_videos(playlist: str, max_results: int = 50) -> str:
+    """List videos in a YouTube playlist.
+
+    Args:
+        playlist: Playlist ID (PL…) or full playlist URL
+        max_results: Number of videos to return, 1 to 200 (default: 50)
+    """
+    return t_discovery.get_playlist_videos(playlist, max_results)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)

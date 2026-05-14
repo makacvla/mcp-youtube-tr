@@ -86,6 +86,21 @@ def _channel_videos(url: str, n: int) -> dict:
     return _extract(url, extra_opts={"extract_flat": True, "playlistend": n})
 
 
+PLAYLIST_CAP = 200
+
+
+def _playlist_url(playlist: str) -> str:
+    p = playlist.strip()
+    if p.startswith("http://") or p.startswith("https://"):
+        return p
+    return f"https://www.youtube.com/playlist?list={p}"
+
+
+@cached(ttl_seconds=900)
+def _playlist(url: str, n: int) -> dict:
+    return _extract(url, extra_opts={"extract_flat": True, "playlistend": n})
+
+
 def list_channel_videos(channel: str, max_results: int = 20) -> str:
     if not channel or not channel.strip():
         raise ValueError("channel must be a non-empty string")
@@ -114,5 +129,37 @@ def list_channel_videos(channel: str, max_results: int = 20) -> str:
         "ok": True,
         "channel_id": info.get("channel_id") or info.get("id"),
         "channel_title": info.get("channel") or info.get("title"),
+        "videos": videos,
+    })
+
+
+def get_playlist_videos(playlist: str, max_results: int = 50) -> str:
+    if not playlist or not playlist.strip():
+        raise ValueError("playlist must be a non-empty string")
+    if max_results < 1 or max_results > PLAYLIST_CAP:
+        raise ValueError(f"max_results must be between 1 and {PLAYLIST_CAP}")
+
+    url = _playlist_url(playlist)
+    try:
+        info = _playlist(url, max_results)
+    except Exception as e:
+        return _dumps({"ok": False, "error": str(e), "playlist": playlist})
+
+    videos = []
+    for i, e in enumerate((info.get("entries") or [])[:max_results], start=1):
+        if not e:
+            continue
+        videos.append({
+            "id": e.get("id"),
+            "title": e.get("title"),
+            "duration_sec": e.get("duration"),
+            "channel": e.get("channel") or e.get("uploader"),
+            "position": i,
+        })
+    return _dumps({
+        "ok": True,
+        "playlist_id": info.get("id"),
+        "title": info.get("title"),
+        "video_count": info.get("playlist_count") or len(videos),
         "videos": videos,
     })

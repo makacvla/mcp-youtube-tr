@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 import pytest
 
-from tools.discovery import search_videos, get_channel_info, list_channel_videos
+from tools.discovery import search_videos, get_channel_info, list_channel_videos, get_playlist_videos
 
 
 SEARCH_RESULT = {
@@ -105,3 +105,38 @@ def test_list_channel_videos_success():
 def test_list_channel_videos_cap():
     with pytest.raises(ValueError):
         list_channel_videos("@x", max_results=999)
+
+
+PLAYLIST_INFO = {
+    "id": "PLxxx",
+    "title": "My playlist",
+    "playlist_count": 3,
+    "entries": [
+        {"id": "v1", "title": "V1", "duration": 100, "channel": "Ch1"},
+        {"id": "v2", "title": "V2", "duration": 200, "channel": "Ch2"},
+        {"id": "v3", "title": "V3", "duration": 300, "channel": "Ch3"},
+    ],
+}
+
+
+def test_get_playlist_videos_success():
+    with patch("tools.discovery._extract", return_value=PLAYLIST_INFO):
+        out = json.loads(get_playlist_videos("PLxxx", max_results=3))
+
+    assert out["ok"] is True
+    assert out["playlist_id"] == "PLxxx"
+    assert out["video_count"] == 3
+    assert len(out["videos"]) == 3
+    assert out["videos"][0]["position"] == 1
+    assert out["videos"][2]["position"] == 3
+
+
+def test_get_playlist_videos_url_passthrough():
+    with patch("tools.discovery._extract", return_value=PLAYLIST_INFO) as ext:
+        get_playlist_videos("https://www.youtube.com/playlist?list=PLxxx", max_results=3)
+    assert "list=PLxxx" in ext.call_args[0][0]
+
+
+def test_get_playlist_videos_cap():
+    with pytest.raises(ValueError):
+        get_playlist_videos("PLxxx", max_results=99999)
