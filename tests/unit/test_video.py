@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 import pytest
 
-from tools.video import get_video_info
+from tools.video import get_video_info, get_video_chapters
 
 
 FAKE_INFO = {
@@ -45,3 +45,30 @@ def test_get_video_info_extraction_failure_returns_ok_false():
 def test_get_video_info_raises_on_empty():
     with pytest.raises(ValueError):
         get_video_info("")
+
+
+def test_get_video_chapters_returns_chapters():
+    info = {
+        "id": "abc",
+        "chapters": [
+            {"title": "Intro", "start_time": 0.0, "end_time": 30.0},
+            {"title": "Main", "start_time": 30.0, "end_time": 180.0},
+        ],
+    }
+    with patch("tools.video._extract", return_value=info):
+        out = json.loads(get_video_chapters("abc"))
+
+    assert out["ok"] is True
+    assert len(out["chapters"]) == 2
+    assert out["chapters"][0]["title"] == "Intro"
+    assert out["chapters"][0]["start_sec"] == 0
+    assert out["chapters"][1]["end_sec"] == 180
+
+
+def test_get_video_chapters_empty_when_no_chapters():
+    info = {"id": "abc", "chapters": None}
+    with patch("tools.video._extract", return_value=info):
+        out = json.loads(get_video_chapters("abc"))
+
+    assert out["ok"] is True
+    assert out["chapters"] == []

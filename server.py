@@ -83,6 +83,16 @@ def get_video_info(video: str) -> str:
     return t_video.get_video_info(video)
 
 
+@mcp.tool()
+def get_video_chapters(video: str) -> str:
+    """Fetch chapter markers (title + start/end seconds) for a YouTube video.
+
+    Args:
+        video: YouTube video ID or full URL
+    """
+    return t_video.get_video_chapters(video)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)

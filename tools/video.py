@@ -35,3 +35,24 @@ def get_video_info(video: str) -> str:
         "tags": info.get("tags", []),
         "thumbnail_url": info.get("thumbnail"),
     })
+
+
+def get_video_chapters(video: str) -> str:
+    if not video or not video.strip():
+        raise ValueError("video must be a non-empty string")
+    video_id = extract_video_id(video)
+    try:
+        info = _info(video_id)
+    except Exception as e:
+        return _dumps({"ok": False, "error": str(e), "video_id": video_id})
+
+    chapters_raw = info.get("chapters") or []
+    chapters = [
+        {
+            "title": c.get("title", ""),
+            "start_sec": int(c.get("start_time", 0)),
+            "end_sec": int(c.get("end_time", 0)),
+        }
+        for c in chapters_raw
+    ]
+    return _dumps({"ok": True, "video_id": video_id, "chapters": chapters})
