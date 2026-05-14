@@ -11,7 +11,7 @@ from tools import discovery as t_discovery
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
 
-mcp = FastMCP("YouTube Transcript", stateless_http=True)
+mcp = FastMCP("YouTube Transcript")
 
 
 @mcp.tool()
@@ -157,4 +157,4 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)
     logger.info("Starting YouTube Transcript MCP Server...")
-    mcp.run(transport="http", host="0.0.0.0", port=8000, json_response=True)
+    mcp.run(transport="http", host="0.0.0.0", port=8000, json_response=True, stateless_http=True)
