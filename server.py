@@ -116,6 +116,16 @@ def search_videos(query: str, max_results: int = 10) -> str:
     return t_discovery.search_videos(query, max_results)
 
 
+@mcp.tool()
+def get_channel_info(channel: str) -> str:
+    """Fetch metadata for a YouTube channel (handle, URL, or UC… ID).
+
+    Args:
+        channel: @handle, full channel URL, or UC… channel ID
+    """
+    return t_discovery.get_channel_info(channel)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)

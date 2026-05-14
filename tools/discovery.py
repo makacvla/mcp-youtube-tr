@@ -40,3 +40,39 @@ def search_videos(query: str, max_results: int = 10) -> str:
             "url": e.get("webpage_url") or e.get("url"),
         })
     return _dumps({"ok": True, "query": query, "results": results})
+
+
+def _channel_url(channel: str) -> str:
+    c = channel.strip()
+    if c.startswith("http://") or c.startswith("https://"):
+        return c
+    if c.startswith("@"):
+        return f"https://www.youtube.com/{c}"
+    if c.startswith("UC") and len(c) > 20:
+        return f"https://www.youtube.com/channel/{c}"
+    return f"https://www.youtube.com/@{c.lstrip('@')}"
+
+
+@cached(ttl_seconds=900)
+def _channel(url: str) -> dict:
+    return _extract(url, extra_opts={"extract_flat": True, "playlistend": 1})
+
+
+def get_channel_info(channel: str) -> str:
+    if not channel or not channel.strip():
+        raise ValueError("channel must be a non-empty string")
+    url = _channel_url(channel)
+    try:
+        info = _channel(url)
+    except Exception as e:
+        return _dumps({"ok": False, "error": str(e), "channel": channel})
+
+    return _dumps({
+        "ok": True,
+        "id": info.get("channel_id") or info.get("id"),
+        "title": info.get("channel") or info.get("title"),
+        "subscriber_count": info.get("channel_follower_count"),
+        "video_count": info.get("playlist_count"),
+        "description": info.get("description"),
+        "url": info.get("webpage_url") or url,
+    })

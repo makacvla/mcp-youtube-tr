@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 import pytest
 
-from tools.discovery import search_videos
+from tools.discovery import search_videos, get_channel_info
 
 
 SEARCH_RESULT = {
@@ -54,3 +54,29 @@ def test_search_videos_raises_on_empty_query():
 def test_search_videos_raises_on_zero():
     with pytest.raises(ValueError):
         search_videos("q", max_results=0)
+
+
+CHANNEL_INFO = {
+    "id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+    "channel": "Google Developers",
+    "title": "Google Developers",
+    "channel_follower_count": 2_500_000,
+    "playlist_count": 50,
+    "description": "Channel for devs",
+    "webpage_url": "https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw",
+}
+
+
+def test_get_channel_info_from_handle():
+    with patch("tools.discovery._extract", return_value=CHANNEL_INFO):
+        out = json.loads(get_channel_info("@GoogleDevelopers"))
+
+    assert out["ok"] is True
+    assert out["id"].startswith("UC")
+    assert out["title"] == "Google Developers"
+    assert out["subscriber_count"] == 2_500_000
+
+
+def test_get_channel_info_raises_on_empty():
+    with pytest.raises(ValueError):
+        get_channel_info("")
