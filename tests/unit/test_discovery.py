@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 import pytest
 
-from tools.discovery import search_videos, get_channel_info
+from tools.discovery import search_videos, get_channel_info, list_channel_videos
 
 
 SEARCH_RESULT = {
@@ -80,3 +80,28 @@ def test_get_channel_info_from_handle():
 def test_get_channel_info_raises_on_empty():
     with pytest.raises(ValueError):
         get_channel_info("")
+
+
+CHANNEL_VIDEOS = {
+    "id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+    "channel": "Google Developers",
+    "entries": [
+        {"id": "v1", "title": "Video 1", "duration": 600, "view_count": 1000, "upload_date": "20240101"},
+        {"id": "v2", "title": "Video 2", "duration": 300, "view_count": 500, "upload_date": "20240102"},
+    ],
+}
+
+
+def test_list_channel_videos_success():
+    with patch("tools.discovery._extract", return_value=CHANNEL_VIDEOS):
+        out = json.loads(list_channel_videos("@GoogleDevelopers", max_results=2))
+
+    assert out["ok"] is True
+    assert out["channel_title"] == "Google Developers"
+    assert len(out["videos"]) == 2
+    assert out["videos"][0]["id"] == "v1"
+
+
+def test_list_channel_videos_cap():
+    with pytest.raises(ValueError):
+        list_channel_videos("@x", max_results=999)

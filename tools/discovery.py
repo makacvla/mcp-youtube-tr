@@ -76,3 +76,43 @@ def get_channel_info(channel: str) -> str:
         "description": info.get("description"),
         "url": info.get("webpage_url") or url,
     })
+
+
+CHANNEL_VIDEOS_CAP = 100
+
+
+@cached(ttl_seconds=600)
+def _channel_videos(url: str, n: int) -> dict:
+    return _extract(url, extra_opts={"extract_flat": True, "playlistend": n})
+
+
+def list_channel_videos(channel: str, max_results: int = 20) -> str:
+    if not channel or not channel.strip():
+        raise ValueError("channel must be a non-empty string")
+    if max_results < 1 or max_results > CHANNEL_VIDEOS_CAP:
+        raise ValueError(f"max_results must be between 1 and {CHANNEL_VIDEOS_CAP}")
+
+    base = _channel_url(channel)
+    url = base.rstrip("/") + "/videos"
+    try:
+        info = _channel_videos(url, max_results)
+    except Exception as e:
+        return _dumps({"ok": False, "error": str(e), "channel": channel})
+
+    videos = []
+    for e in (info.get("entries") or [])[:max_results]:
+        if not e:
+            continue
+        videos.append({
+            "id": e.get("id"),
+            "title": e.get("title"),
+            "duration_sec": e.get("duration"),
+            "upload_date": e.get("upload_date"),
+            "view_count": e.get("view_count"),
+        })
+    return _dumps({
+        "ok": True,
+        "channel_id": info.get("channel_id") or info.get("id"),
+        "channel_title": info.get("channel") or info.get("title"),
+        "videos": videos,
+    })

@@ -126,6 +126,17 @@ def get_channel_info(channel: str) -> str:
     return t_discovery.get_channel_info(channel)
 
 
+@mcp.tool()
+def list_channel_videos(channel: str, max_results: int = 20) -> str:
+    """List recent videos from a YouTube channel.
+
+    Args:
+        channel: @handle, full channel URL, or UC… channel ID
+        max_results: Number of videos to return, 1 to 100 (default: 20)
+    """
+    return t_discovery.list_channel_videos(channel, max_results)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)
