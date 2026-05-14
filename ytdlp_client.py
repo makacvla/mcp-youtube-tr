@@ -45,7 +45,7 @@ def cached(ttl_seconds: int):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            key = (fn.__name__, args, tuple(sorted(kwargs.items())))
+            key = (fn.__module__, fn.__qualname__, args, tuple(sorted(kwargs.items())))
             now = time.monotonic()
             if key in _cache:
                 ts, value = _cache[key]
