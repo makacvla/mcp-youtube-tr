@@ -5,6 +5,7 @@ import sys
 from fastmcp import FastMCP
 
 from tools import transcript as t_transcript
+from tools import video as t_video
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("youtube-transcript-mcp")
@@ -70,6 +71,16 @@ def search_in_transcript(
         context_chars: Characters of context to include around each match (default: 50)
     """
     return t_transcript.search_in_transcript(video, query, languages, context_chars)
+
+
+@mcp.tool()
+def get_video_info(video: str) -> str:
+    """Fetch metadata about a YouTube video without watching it.
+
+    Args:
+        video: YouTube video ID or full URL
+    """
+    return t_video.get_video_info(video)
 
 
 def _signal_handler(sig, frame):
