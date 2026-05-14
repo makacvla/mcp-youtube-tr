@@ -56,3 +56,52 @@ def get_video_chapters(video: str) -> str:
         for c in chapters_raw
     ]
     return _dumps({"ok": True, "video_id": video_id, "chapters": chapters})
+
+
+_QUALITY_PRIORITY = {
+    "max": ["maxresdefault", "sddefault", "hqdefault", "mqdefault", "default"],
+    "high": ["hqdefault", "sddefault", "mqdefault", "default"],
+    "medium": ["mqdefault", "default"],
+    "default": ["default"],
+}
+
+
+def get_thumbnail_url(video: str, quality: str = "max") -> str:
+    if not video or not video.strip():
+        raise ValueError("video must be a non-empty string")
+    if quality not in _QUALITY_PRIORITY:
+        raise ValueError(f"quality must be one of {list(_QUALITY_PRIORITY)}")
+
+    video_id = extract_video_id(video)
+    try:
+        info = _info(video_id)
+    except Exception as e:
+        return _dumps({"ok": False, "error": str(e), "video_id": video_id})
+
+    thumbs = info.get("thumbnails") or []
+    by_id = {t.get("id"): t for t in thumbs}
+    for tid in _QUALITY_PRIORITY[quality]:
+        t = by_id.get(tid)
+        if t and t.get("url"):
+            return _dumps({
+                "ok": True,
+                "video_id": video_id,
+                "url": t["url"],
+                "width": t.get("width"),
+                "height": t.get("height"),
+                "quality": quality,
+            })
+
+    # fallback to top-level thumbnail
+    fallback = info.get("thumbnail")
+    if fallback:
+        return _dumps({
+            "ok": True,
+            "video_id": video_id,
+            "url": fallback,
+            "width": None,
+            "height": None,
+            "quality": quality,
+        })
+
+    return _dumps({"ok": False, "error": "no thumbnail available", "video_id": video_id})

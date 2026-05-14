@@ -93,6 +93,17 @@ def get_video_chapters(video: str) -> str:
     return t_video.get_video_chapters(video)
 
 
+@mcp.tool()
+def get_thumbnail_url(video: str, quality: str = "max") -> str:
+    """Get a thumbnail URL for a YouTube video at the requested quality.
+
+    Args:
+        video: YouTube video ID or full URL
+        quality: One of "max", "high", "medium", "default" (default: "max")
+    """
+    return t_video.get_thumbnail_url(video, quality)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)

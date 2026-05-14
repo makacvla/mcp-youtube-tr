@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 import pytest
 
-from tools.video import get_video_info, get_video_chapters
+from tools.video import get_video_info, get_video_chapters, get_thumbnail_url
 
 
 FAKE_INFO = {
@@ -72,3 +72,42 @@ def test_get_video_chapters_empty_when_no_chapters():
 
     assert out["ok"] is True
     assert out["chapters"] == []
+
+
+def test_get_thumbnail_url_max_quality():
+    info = {
+        "id": "abc",
+        "thumbnails": [
+            {"id": "default", "url": "https://i.ytimg.com/vi/abc/default.jpg", "width": 120, "height": 90},
+            {"id": "mqdefault", "url": "https://i.ytimg.com/vi/abc/mqdefault.jpg", "width": 320, "height": 180},
+            {"id": "hqdefault", "url": "https://i.ytimg.com/vi/abc/hqdefault.jpg", "width": 480, "height": 360},
+            {"id": "maxresdefault", "url": "https://i.ytimg.com/vi/abc/maxresdefault.jpg", "width": 1280, "height": 720},
+        ],
+        "thumbnail": "https://i.ytimg.com/vi/abc/maxresdefault.jpg",
+    }
+    with patch("tools.video._extract", return_value=info):
+        out = json.loads(get_thumbnail_url("abc", quality="max"))
+
+    assert out["ok"] is True
+    assert "maxresdefault" in out["url"]
+    assert out["width"] == 1280
+    assert out["quality"] == "max"
+
+
+def test_get_thumbnail_url_default_quality():
+    info = {
+        "id": "abc",
+        "thumbnails": [
+            {"id": "default", "url": "https://i.ytimg.com/vi/abc/default.jpg", "width": 120, "height": 90},
+            {"id": "maxresdefault", "url": "https://i.ytimg.com/vi/abc/maxresdefault.jpg", "width": 1280, "height": 720},
+        ],
+    }
+    with patch("tools.video._extract", return_value=info):
+        out = json.loads(get_thumbnail_url("abc", quality="default"))
+
+    assert out["width"] == 120
+
+
+def test_get_thumbnail_url_raises_on_unknown_quality():
+    with pytest.raises(ValueError):
+        get_thumbnail_url("abc", quality="ultra")
