@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from tools.transcript import get_transcript
+from tools.transcript import get_transcript, list_available_transcripts
 
 
 class _Entry:
@@ -51,3 +51,31 @@ def test_get_transcript_no_languages_returns_ok_false():
 def test_get_transcript_raises_on_empty_video():
     with pytest.raises(ValueError):
         get_transcript("", languages="en")
+
+
+def test_list_available_transcripts_success():
+    t1 = MagicMock(language="English", language_code="en", is_generated=False)
+    t2 = MagicMock(language="Russian (auto)", language_code="ru", is_generated=True)
+    api = MagicMock()
+    api.list.return_value = [t1, t2]
+
+    with patch("tools.transcript.YouTubeTranscriptApi", return_value=api):
+        out = json.loads(list_available_transcripts("dQw4w9WgXcQ"))
+
+    assert out["ok"] is True
+    assert out["video_id"] == "dQw4w9WgXcQ"
+    assert len(out["transcripts"]) == 2
+    assert out["transcripts"][0]["language_code"] == "en"
+    assert out["transcripts"][1]["is_generated"] is True
+
+
+def test_list_available_transcripts_error_returns_ok_false():
+    api = MagicMock()
+    api.list.side_effect = Exception("not found")
+
+    with patch("tools.transcript.YouTubeTranscriptApi", return_value=api):
+        out = json.loads(list_available_transcripts("dQw4w9WgXcQ"))
+
+    assert out["ok"] is False
+    assert "error" in out
+    assert out["video_id"] == "dQw4w9WgXcQ"

@@ -95,3 +95,22 @@ def get_transcript(video: str, languages: str = "en,ru", timestamps: bool = True
         "available_transcripts": available_info,
         "transcript": _format_entries(transcript, timestamps),
     })
+
+
+def list_available_transcripts(video: str) -> str:
+    if not video or not video.strip():
+        raise ValueError("video must be a non-empty string")
+    video_id = extract_video_id(video)
+    try:
+        transcripts = _list_tracks(video_id)
+    except Exception as e:
+        return _dumps({"ok": False, "error": f"Could not list transcripts: {e}", "video_id": video_id})
+
+    return _dumps({
+        "ok": True,
+        "video_id": video_id,
+        "transcripts": [
+            {"language": t.language, "language_code": t.language_code, "is_generated": t.is_generated}
+            for t in transcripts
+        ],
+    })

@@ -24,6 +24,16 @@ def get_transcript(video: str, languages: str = "en,ru", timestamps: bool = True
     return t_transcript.get_transcript(video, languages, timestamps)
 
 
+@mcp.tool()
+def list_available_transcripts(video: str) -> str:
+    """List all available transcript tracks for a YouTube video without fetching content.
+
+    Args:
+        video: YouTube video ID or full URL
+    """
+    return t_transcript.list_available_transcripts(video)
+
+
 def _signal_handler(sig, frame):
     logger.info(f"Received signal {sig}, shutting down gracefully...")
     sys.exit(0)
