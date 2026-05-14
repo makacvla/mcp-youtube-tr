@@ -117,7 +117,7 @@ def list_available_transcripts(video: str) -> str:
 
 
 def _fetch_first_available(video_id, lang_list):
-    """Return (entries, used_lang) on success, or (None, None, errors) on failure.
+    """Return (entries, used_lang, None) on success, or (None, None, errors) on failure.
 
     Uses the cached _fetch_lang so repeated calls for the same (video_id, lang)
     share the 6h TTL with get_transcript and friends.
