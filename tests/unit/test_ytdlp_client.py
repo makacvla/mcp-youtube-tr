@@ -1,5 +1,6 @@
 import pytest
 import time
+from unittest.mock import patch, MagicMock
 from ytdlp_client import extract_video_id, cached, _cache_clear, _cache_size, MAX_CACHE_ENTRIES
 
 
@@ -87,3 +88,38 @@ def test_cache_lru_eviction():
     for i in range(MAX_CACHE_ENTRIES + 10):
         f(i)
     assert _cache_size() == MAX_CACHE_ENTRIES
+
+
+def test_extract_calls_ytdl_with_base_opts():
+    fake_info = {"id": "abc", "title": "T"}
+    with patch("ytdlp_client.YoutubeDL") as YDL:
+        instance = MagicMock()
+        instance.__enter__.return_value = instance
+        instance.extract_info.return_value = fake_info
+        YDL.return_value = instance
+
+        from ytdlp_client import _extract
+        result = _extract("https://youtu.be/abc")
+
+    assert result == fake_info
+    opts = YDL.call_args[0][0]
+    assert opts["quiet"] is True
+    assert opts["skip_download"] is True
+    assert opts["no_warnings"] is True
+    instance.extract_info.assert_called_once_with(
+        "https://youtu.be/abc", download=False
+    )
+
+
+def test_extract_passes_proxy_from_env(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://corp.proxy:8080")
+    with patch("ytdlp_client.YoutubeDL") as YDL:
+        instance = MagicMock()
+        instance.__enter__.return_value = instance
+        instance.extract_info.return_value = {}
+        YDL.return_value = instance
+
+        from ytdlp_client import _extract
+        _extract("https://youtu.be/abc")
+
+    assert YDL.call_args[0][0]["proxy"] == "http://corp.proxy:8080"

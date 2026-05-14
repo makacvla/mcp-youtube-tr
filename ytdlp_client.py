@@ -1,7 +1,9 @@
+import os
 import re
 import time
 from collections import OrderedDict
 from functools import wraps
+from yt_dlp import YoutubeDL
 
 YOUTUBE_PATTERNS = [
     r"(?:youtube\.com/shorts/)([a-zA-Z0-9_-]{11})",
@@ -59,3 +61,29 @@ def cached(ttl_seconds: int):
             return value
         return wrapper
     return decorator
+
+
+def _base_opts(extra: dict | None = None) -> dict:
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extract_flat": False,
+    }
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    if proxy:
+        opts["proxy"] = proxy
+    if extra:
+        opts.update(extra)
+    return opts
+
+
+def _extract(url_or_query: str, *, extra_opts: dict | None = None) -> dict:
+    """Run yt-dlp extract_info and return the raw dict.
+
+    Raises yt-dlp exceptions on extraction failure — callers translate
+    them into the `{ok: false, error: ...}` response envelope.
+    """
+    opts = _base_opts(extra_opts)
+    with YoutubeDL(opts) as ydl:
+        return ydl.extract_info(url_or_query, download=False)
