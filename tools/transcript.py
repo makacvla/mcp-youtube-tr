@@ -119,8 +119,8 @@ def list_available_transcripts(video: str) -> str:
 def _fetch_first_available(video_id, lang_list):
     """Return (entries, used_lang, None) on success, or (None, None, errors) on failure.
 
-    Uses the cached _fetch_lang so repeated calls for the same (video_id, lang)
-    share the 6h TTL with get_transcript and friends.
+    Tries each language in lang_list via cached _fetch_lang. If none succeed,
+    falls back to the first available track on the video (matching get_transcript).
     """
     errors = []
     for lang in lang_list:
@@ -128,6 +128,15 @@ def _fetch_first_available(video_id, lang_list):
             return _fetch_lang(video_id, lang), lang, None
         except Exception as e:
             errors.append(f"{lang}: {e}")
+
+    # fallback: try first available track on the video
+    try:
+        tracks = _list_tracks(video_id)
+        if tracks:
+            first = tracks[0]
+            return first.fetch(), first.language_code, None
+    except Exception as e:
+        errors.append(f"fallback: {e}")
     return None, None, errors
 
 
